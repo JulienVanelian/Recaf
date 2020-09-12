@@ -1,8 +1,10 @@
 package me.coley.recaf.ui.controls;
 
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -23,6 +25,8 @@ import static me.coley.recaf.util.LangUtil.translate;
 public class SearchBar extends GridPane {
 	private final Label lblResults = new Label();
 	private final TextField txtSearch = new TextField();
+	Button clearSearch = new ActionButton(null, this::resetSearch);
+	Button toggleCase = new ActionButton(null, this::toggleCase);
 	private final Supplier<String> text;
 	// actions
 	private Runnable onEscape;
@@ -32,23 +36,31 @@ public class SearchBar extends GridPane {
 	private String lastSearchText;
 	// last result
 	private Results results;
+	private boolean matchCase = false;
 
 	/**
 	 * @param text
 	 * 		Supplier of searchable text.
 	 */
 	public SearchBar(Supplier<String> text) {
+		// TODO: Better search field:
+		//  - Options
+		//     - regex
 		setAlignment(Pos.CENTER_LEFT);
 		setHgap(7);
 		ColumnConstraints column1 = new ColumnConstraints();
-		column1.setPercentWidth(75);
+		column1.setPercentWidth(70);
 		ColumnConstraints column2 = new ColumnConstraints();
-		column2.setPercentWidth(25);
-		getColumnConstraints().addAll(column1, column2);
-		// TODO: Better search field:
-		//  - Options
-		//     - case sensitivity
-		//     - regex
+		column2.setPercentWidth(10);
+		ColumnConstraints column3 = new ColumnConstraints();
+		column2.setPercentWidth(10);
+		ColumnConstraints column4 = new ColumnConstraints();
+		column3.setPercentWidth(10);
+		getColumnConstraints().addAll(column1, column2, column3, column4);
+		clearSearch.setGraphic(new IconView("icons/data.png"));
+		clearSearch.setTooltip(new Tooltip("Clear search"));
+		toggleCase.setGraphic(new IconView("icons/text-code.png"));
+		toggleCase.setTooltip(new Tooltip("Match case"));
 		this.text = text;
 		getStyleClass().add("context-menu");
 		txtSearch.getStyleClass().add("search-field");
@@ -81,7 +93,9 @@ public class SearchBar extends GridPane {
 			}
 		});
 		add(txtSearch, 0, 0);
-		add(lblResults, 1, 0);
+		add(clearSearch, 1, 0);
+		add(toggleCase, 2, 0);
+		add(lblResults, 3, 0);
 	}
 
 	/**
@@ -117,6 +131,22 @@ public class SearchBar extends GridPane {
 	}
 
 	/**
+	 * Reset the search.
+	 */
+	public void resetSearch() {
+		clear();
+		txtSearch.requestFocus();
+	}
+
+	/**
+	 * Toggle case sensitivity
+	 */
+	private void toggleCase() {
+		matchCase = !matchCase;
+		search();
+	}
+
+	/**
 	 * @param text
 	 * 		Text to set.
 	 */
@@ -128,9 +158,15 @@ public class SearchBar extends GridPane {
 	 * @return Search result ranges of the current search parameters.
 	 */
 	private Results search() {
+		System.out.println("Start search");
 		Results results = new Results();
 		String searchText = txtSearch.getText();
 		String targetText = text.get();
+		if (!matchCase) {
+			System.out.println("Don't match case");
+			searchText = searchText.toLowerCase();
+			targetText = targetText.toLowerCase();
+		}
 		int len = searchText.length();
 		int index = targetText.indexOf(searchText);
 		while(index >= 0) {

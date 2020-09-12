@@ -200,7 +200,8 @@
 .search-field {
 	-fx-background-image: url('../icons/find.png');
 	-fx-background-repeat: no-repeat;
-	-fx-background-position: right center;
+	-fx-background-position: left center;
+	-fx-padding: 5 5 5 20;
 }
 .error-list {
 	-fx-border-width: 1 0 0 0;
