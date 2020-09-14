@@ -6,8 +6,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import me.coley.recaf.util.struct.Pair;
 
 import java.util.ArrayList;
@@ -23,79 +26,56 @@ import static me.coley.recaf.util.LangUtil.translate;
  * @author Matt
  */
 public class SearchBar extends GridPane {
+	// Actions
+	private Runnable onCloseIntent;
+	private Consumer<Results> onSearch;
+	// UI
 	private final Label lblResults = new Label();
 	private final TextField txtSearch = new TextField();
 	Button clearSearch = new ActionButton(null, this::resetSearch);
+	Button closeSearch = new ActionButton(null, this::closeSearch);
 	Button toggleCase = new ActionButton(null, this::toggleCase);
+	Button toggleRegex = new ActionButton(null, this::toggleRegex);
 	private final Supplier<String> text;
-	// actions
-	private Runnable onEscape;
-	private Consumer<Results> onSearch;
 	// inputs
 	private boolean dirty = true;
 	private String lastSearchText;
 	// last result
 	private Results results;
 	private boolean matchCase = false;
+	private boolean regex = false;
 
 	/**
 	 * @param text
 	 * 		Supplier of searchable text.
 	 */
 	public SearchBar(Supplier<String> text) {
-		// TODO: Better search field:
-		//  - Options
-		//     - regex
 		setAlignment(Pos.CENTER_LEFT);
 		setHgap(7);
-		ColumnConstraints column1 = new ColumnConstraints();
-		column1.setPercentWidth(70);
-		ColumnConstraints column2 = new ColumnConstraints();
-		column2.setPercentWidth(10);
-		ColumnConstraints column3 = new ColumnConstraints();
-		column2.setPercentWidth(10);
-		ColumnConstraints column4 = new ColumnConstraints();
-		column3.setPercentWidth(10);
-		getColumnConstraints().addAll(column1, column2, column3, column4);
-		clearSearch.setGraphic(new IconView("icons/data.png"));
+		ColumnConstraints columnInput = new ColumnConstraints();
+		columnInput.setPercentWidth(30);
+		ColumnConstraints columnOptions = new ColumnConstraints();
+		columnOptions.setPercentWidth(70);
+		getColumnConstraints().addAll(columnInput, columnOptions);
+		clearSearch.setGraphic(new IconView("icons/close.png"));
 		clearSearch.setTooltip(new Tooltip("Clear search"));
-		toggleCase.setGraphic(new IconView("icons/text-code.png"));
+		toggleCase.setText("Aa");
 		toggleCase.setTooltip(new Tooltip("Match case"));
+		toggleRegex.setText(".*");
+		toggleRegex.setTooltip(new Tooltip("Regex"));
+		closeSearch.setGraphic(new IconView("icons/close.png"));
+		closeSearch.setTooltip(new Tooltip("Close search"));
 		this.text = text;
 		getStyleClass().add("context-menu");
 		txtSearch.getStyleClass().add("search-field");
-		txtSearch.setOnKeyPressed(e -> {
-			// Check if we've updated the search query
-			String searchText = e.getText();
-			if(!searchText.equals(lastSearchText)) {
-				dirty = true;
-			}
-			lastSearchText = searchText;
-			// Handle operations
-			if(e.getCode().getName().equals(KeyCode.ESCAPE.getName())) {
-				// Escape the search bar
-				if(onEscape != null)
-					onEscape.run();
-			} else if(e.getCode().getName().equals(KeyCode.ENTER.getName())) {
-				// Empty check
-				if (txtSearch.getText().isEmpty()) {
-					results = null;
-					return;
-				}
-				// Find next
-				//  - Run search if necessary
-				if(dirty) {
-					results = search();
-					dirty = false;
-				}
-				if(onSearch != null && results != null)
-					onSearch.accept(results);
-			}
-		});
+		txtSearch.setOnKeyPressed(this::handleKeypress);
+		HBox hBox = new HBox(0, clearSearch, toggleCase, toggleRegex, lblResults, closeSearch);
+		HBox.setHgrow(lblResults, Priority.ALWAYS);
+		hBox.setAlignment(Pos.CENTER);
+		hBox.setSpacing(5);
+		lblResults.setMaxWidth(Double.MAX_VALUE);
 		add(txtSearch, 0, 0);
-		add(clearSearch, 1, 0);
-		add(toggleCase, 2, 0);
-		add(lblResults, 3, 0);
+		add(hBox, 1, 0);
 	}
 
 	/**
@@ -105,13 +85,12 @@ public class SearchBar extends GridPane {
 	public void setOnSearch(Consumer<Results> onSearch) {
 		this.onSearch = onSearch;
 	}
-
 	/**
-	 * @param onEscape
+	 * @param onCloseIntent
 	 * 		Escape handler to run.
 	 */
-	public void setOnEscape(Runnable onEscape) {
-		this.onEscape = onEscape;
+	public void setOnCloseIntent(Runnable onCloseIntent) {
+		this.onCloseIntent = onCloseIntent;
 	}
 
 	/**
@@ -138,12 +117,59 @@ public class SearchBar extends GridPane {
 		txtSearch.requestFocus();
 	}
 
+	private void handleKeypress(KeyEvent e) {
+		// Check if we've updated the search query
+		String searchText = matchCase ? txtSearch.getText() : txtSearch.getText().toLowerCase();
+		if(!searchText.equals(lastSearchText)) {
+			dirty = true;
+		}
+		lastSearchText = searchText;
+		// Handle operations
+		if(e.getCode() == KeyCode.ESCAPE) {
+			// Escape the search bar
+			closeSearch();
+		} else {
+			// Empty check
+			if (searchText.isEmpty()) {
+				results = null;
+				return;
+			}
+			// Find next
+			//  - Run search if necessary
+			if(dirty) {
+				results = search();
+				dirty = false;
+			}
+			if(onSearch != null && results != null)
+				onSearch.accept(results);
+		}
+	}
 	/**
 	 * Toggle case sensitivity
 	 */
 	private void toggleCase() {
 		matchCase = !matchCase;
-		search();
+		String searchText = matchCase ? txtSearch.getText() : txtSearch.getText().toLowerCase();
+		if (!searchText.isEmpty() && !lastSearchText.equals(searchText)) {
+			lastSearchText = searchText;
+			results = search();
+			if (onSearch != null)
+				onSearch.accept(results);
+		}
+		txtSearch.requestFocus();
+	}
+
+	/**
+	 * Toggle regex in search field
+	 */
+	private void toggleRegex() {
+		regex = !regex;
+		txtSearch.requestFocus();
+	}
+
+	private void closeSearch() {
+		if(onCloseIntent != null)
+			onCloseIntent.run();
 	}
 
 	/**
@@ -158,12 +184,10 @@ public class SearchBar extends GridPane {
 	 * @return Search result ranges of the current search parameters.
 	 */
 	private Results search() {
-		System.out.println("Start search");
 		Results results = new Results();
 		String searchText = txtSearch.getText();
 		String targetText = text.get();
 		if (!matchCase) {
-			System.out.println("Don't match case");
 			searchText = searchText.toLowerCase();
 			targetText = targetText.toLowerCase();
 		}

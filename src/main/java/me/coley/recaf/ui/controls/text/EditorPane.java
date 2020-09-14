@@ -87,6 +87,11 @@ public class EditorPane<E extends ErrorHandling, C extends ContextHandling> exte
 			hbox.setAlignment(Pos.CENTER_LEFT);
 			return hbox;
 		};
+		// Close search on escape key press
+		codeArea.setOnKeyPressed(e -> {
+			if (e.getCode() == KeyCode.ESCAPE)
+				closeSearch();
+		});
 		Platform.runLater(() -> codeArea.setParagraphGraphicFactory(decorationFactory));
 		LanguageStyler styler = new LanguageStyler(language);
 		codeArea.richChanges()
@@ -119,25 +124,24 @@ public class EditorPane<E extends ErrorHandling, C extends ContextHandling> exte
 				search.focus();
 			}
 		});
-		search.setOnEscape(() -> {
-			// Escape -> Hide field
-			search.clear();
-			codeArea.requestFocus();
-			setTop(null);
-		});
+		// Escape -> Hide field
+		search.setOnCloseIntent(this::closeSearch);
 		search.setOnSearch(results -> {
-			// On search, goto next result
 			int caret = codeArea.getCaretPosition();
 			Pair<Integer, Integer> range = results.next(caret);
-			if (range == null) {
-				// No results
-				Toolkit.getDefaultToolkit().beep();
-			} else {
+			if (range != null) {
 				// Move caret to result range
 				codeArea.selectRange(range.getKey(), range.getValue());
 				codeArea.requestFollowCaret();
 			}
 		});
+	}
+
+	public void closeSearch() {
+		search.clear();
+		codeArea.selectRange(codeArea.getCaretPosition(), codeArea.getCaretPosition());
+		codeArea.requestFocus();
+		setTop(null);
 	}
 
 	/**
