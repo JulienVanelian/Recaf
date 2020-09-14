@@ -6,7 +6,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -32,14 +31,10 @@ public class SearchBar extends GridPane {
 	// UI
 	private final Label lblResults = new Label();
 	private final TextField txtSearch = new TextField();
-	Button clearSearch = new ActionButton(null, this::resetSearch);
-	Button closeSearch = new ActionButton(null, this::closeSearch);
-	Button toggleCase = new ActionButton(null, this::toggleCase);
-	Button toggleRegex = new ActionButton(null, this::toggleRegex);
 	private final Supplier<String> text;
 	// inputs
 	private boolean dirty = true;
-	// last result
+	// Results
 	private Results results;
 	private boolean matchCase = false;
 	private boolean regex = false;
@@ -56,12 +51,16 @@ public class SearchBar extends GridPane {
 		ColumnConstraints columnOptions = new ColumnConstraints();
 		columnOptions.setPercentWidth(70);
 		getColumnConstraints().addAll(columnInput, columnOptions);
+		Button clearSearch = new ActionButton(null, this::resetSearch);
 		clearSearch.setGraphic(new IconView("icons/close.png"));
 		clearSearch.setTooltip(new Tooltip("Clear search"));
+		Button toggleCase = new ActionButton(null, this::toggleCase);
 		toggleCase.setText("Aa");
 		toggleCase.setTooltip(new Tooltip("Match case"));
+		Button toggleRegex = new ActionButton(null, this::toggleRegex);
 		toggleRegex.setText(".*");
 		toggleRegex.setTooltip(new Tooltip("Regex"));
+		Button closeSearch = new ActionButton(null, this::closeSearch);
 		closeSearch.setGraphic(new IconView("icons/close.png"));
 		closeSearch.setTooltip(new Tooltip("Close search"));
 		this.text = text;

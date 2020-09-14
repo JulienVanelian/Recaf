@@ -124,7 +124,6 @@ public class EditorPane<E extends ErrorHandling, C extends ContextHandling> exte
 				search.focus();
 			}
 		});
-		// Escape -> Hide field
 		search.setOnCloseIntent(this::closeSearch);
 		search.setOnSearch(results -> {
 			int caret = codeArea.getCaretPosition();
