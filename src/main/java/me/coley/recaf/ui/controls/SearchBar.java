@@ -39,7 +39,6 @@ public class SearchBar extends GridPane {
 	private final Supplier<String> text;
 	// inputs
 	private boolean dirty = true;
-	private String lastSearchText;
 	// last result
 	private Results results;
 	private boolean matchCase = false;
@@ -68,7 +67,45 @@ public class SearchBar extends GridPane {
 		this.text = text;
 		getStyleClass().add("context-menu");
 		txtSearch.getStyleClass().add("search-field");
-		txtSearch.setOnKeyPressed(this::handleKeypress);
+		txtSearch.textProperty().addListener((observable, oldValue, newValue) -> {
+			String searchText = matchCase ? newValue : newValue.toLowerCase();
+			// Check if we've updated the search query
+			if(!searchText.equals(oldValue)) {
+				dirty = true;
+			}
+			// Empty check
+			if (searchText.isEmpty()) {
+				results = null;
+				return;
+			}
+			// Find next
+			//  - Run search if necessary
+			if(dirty) {
+				results = search();
+				dirty = false;
+			}
+			if(onSearch != null && results != null)
+				onSearch.accept(results);
+		});
+		txtSearch.setOnKeyPressed(e -> {
+			if(e.getCode() == KeyCode.ESCAPE) {
+				// Escape the search bar
+				closeSearch();
+			}
+			if(e.getCode() == KeyCode.ENTER) {
+				String searchText = matchCase ? txtSearch.getText() : txtSearch.getText().toLowerCase();
+				// Empty check
+				if (searchText.isEmpty()) {
+					results = null;
+					return;
+				}
+				// Find next
+				//  - Run search if necessary
+				results = search();
+				if(onSearch != null)
+					onSearch.accept(results);
+			}
+		});
 		HBox hBox = new HBox(0, clearSearch, toggleCase, toggleRegex, lblResults, closeSearch);
 		HBox.setHgrow(lblResults, Priority.ALWAYS);
 		hBox.setAlignment(Pos.CENTER);
@@ -117,41 +154,13 @@ public class SearchBar extends GridPane {
 		txtSearch.requestFocus();
 	}
 
-	private void handleKeypress(KeyEvent e) {
-		// Check if we've updated the search query
-		String searchText = matchCase ? txtSearch.getText() : txtSearch.getText().toLowerCase();
-		if(!searchText.equals(lastSearchText)) {
-			dirty = true;
-		}
-		lastSearchText = searchText;
-		// Handle operations
-		if(e.getCode() == KeyCode.ESCAPE) {
-			// Escape the search bar
-			closeSearch();
-		} else {
-			// Empty check
-			if (searchText.isEmpty()) {
-				results = null;
-				return;
-			}
-			// Find next
-			//  - Run search if necessary
-			if(dirty) {
-				results = search();
-				dirty = false;
-			}
-			if(onSearch != null && results != null)
-				onSearch.accept(results);
-		}
-	}
 	/**
 	 * Toggle case sensitivity
 	 */
 	private void toggleCase() {
 		matchCase = !matchCase;
 		String searchText = matchCase ? txtSearch.getText() : txtSearch.getText().toLowerCase();
-		if (!searchText.isEmpty() && !lastSearchText.equals(searchText)) {
-			lastSearchText = searchText;
+		if (!searchText.isEmpty()) {
 			results = search();
 			if (onSearch != null)
 				onSearch.accept(results);
